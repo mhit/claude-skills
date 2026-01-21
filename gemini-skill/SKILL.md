@@ -1,6 +1,6 @@
 ---
-name: gemini-skill
-description: "Gemini CLI連携スキル。Claudeがコンテキスト制限を克服し、最新情報取得、画像認識、UI設計でGeminiを自発的に活用する。トリガー: (1) 大きなファイル(100KB+)、(2) 最新情報が必要、(3) PDF/画像読み取り、(4) UI/UX設計、(5) セカンドオピニオン。コマンド: /gemini, /gemini-search, /gemini-ocr, /gemini-analyze, /gemini-review, /gemini-design"
+name: using-gemini
+description: "Integrates Gemini CLI for tasks beyond Claude's context limits. Fetches latest information via web search, performs OCR on images/PDFs, analyzes large files (100KB+), reviews code for second opinions, and assists with UI/UX design. Use when users need: (1) Large file analysis, (2) Latest information, (3) PDF/image reading, (4) UI/UX design, (5) Code review second opinion. Commands: /gemini, /gemini-search, /gemini-ocr, /gemini-analyze, /gemini-review, /gemini-design"
 ---
 
 # Gemini CLI Integration Skill
