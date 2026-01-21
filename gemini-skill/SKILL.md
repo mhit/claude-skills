@@ -7,6 +7,23 @@ description: "Integrates Gemini CLI for tasks beyond Claude's context limits. Fe
 
 **私（Claude）がGeminiを自発的に使うためのスキル。**
 
+## 環境変数
+
+| 変数名 | 必須 | デフォルト | 説明 |
+|--------|------|-----------|------|
+| `GEMINI_API_KEY` | Yes | - | Gemini APIキー |
+| `GEMINI_DEFAULT_MODEL` | No | `gemini-2.5-flash` | デフォルトモデル |
+| `GEMINI_TIMEOUT` | No | `900` (15分) | タイムアウト秒 |
+
+```bash
+# 必須
+export GEMINI_API_KEY="your-api-key"
+
+# オプション
+export GEMINI_DEFAULT_MODEL="gemini-2.5-pro"
+export GEMINI_TIMEOUT="600"
+```
+
 ## 私がGeminiを使うべき場面
 
 | 場面 | なぜGemini? | 使うコマンド |
@@ -161,9 +178,57 @@ gemini -m gemini-3-flash-preview "以下の要件でUIを設計して: ダッシ
 4. **UI/UX相談**: デザイン系 → `/gemini-design`
 5. **重要な変更**: 本番前 → `/gemini-review`
 
+## パイプ（stdin）対応
+
+`gemini-call.sh` は `--stdin` オプションでパイプ入力に対応:
+
+```bash
+# ログをパイプで渡して分析
+cat production.log | gemini-call.sh --stdin --task analyze "エラーを特定して"
+
+# git diff をレビュー
+git diff | gemini-call.sh --stdin --task review "この変更をレビューして"
+
+# 複数ファイルを結合して渡す
+cat src/*.ts | gemini-call.sh --stdin "このコードの問題点は？"
+```
+
+## gemini-call.sh オプション
+
+| オプション | 説明 |
+|-----------|------|
+| `-m, --model MODEL` | モデル指定 |
+| `--task TASK` | タスクタイプ（ocr/design/review/analyze/quick） |
+| `-f, --file FILE` | ファイルを含める（複数可） |
+| `--stdin` | 標準入力から読み込み |
+| `-t, --timeout SECS` | タイムアウト秒（デフォルト: 900秒=15分） |
+| `-j, --json` | JSON出力 |
+| `-y, --yolo` | 自動承認 |
+
+## CLAUDE.md テンプレート
+
+プロジェクト単位でGemini連携をカスタマイズするには:
+
+```bash
+# テンプレートをプロジェクトにコピー
+cp templates/CLAUDE.gemini.md your-project/CLAUDE.md
+```
+
+テンプレートには以下が含まれます:
+- コマンド定義（gemini, gemini-review, gemini-search等）
+- 自動判断ルール
+- タスク別モデル選択
+- 使用例
+
+詳細: [templates/CLAUDE.gemini.md](templates/CLAUDE.gemini.md)
+
 ## scripts/
 
 - `gemini-call.sh` - Gemini CLI呼び出しラッパー
+
+## templates/
+
+- [CLAUDE.gemini.md](templates/CLAUDE.gemini.md) - プロジェクト用設定テンプレート
 
 ## references/
 

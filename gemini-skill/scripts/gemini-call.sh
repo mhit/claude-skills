@@ -5,11 +5,17 @@
 # Options:
 #   -m, --model MODEL    Model to use (see below for recommendations)
 #   -f, --file FILE      File to include (can be repeated)
-#   -t, --timeout SECS   Timeout in seconds (default: 300)
+#   -t, --timeout SECS   Timeout in seconds (default: 900 = 15 min)
 #   -j, --json           Output as JSON
 #   -y, --yolo           Auto-approve all actions
+#   --stdin              Read content from stdin (pipe support)
 #   --task TASK          Auto-select model by task type
 #   -h, --help           Show this help
+#
+# Environment variables:
+#   GEMINI_API_KEY       API key (required by gemini CLI)
+#   GEMINI_DEFAULT_MODEL Default model (optional)
+#   GEMINI_TIMEOUT       Timeout in seconds (default: 900 = 15 min)
 #
 # Model recommendations by task:
 #   ocr      → gemini-3-pro-preview (multimodal best)
@@ -30,14 +36,16 @@ declare -A TASK_MODELS=(
     ["default"]="gemini-2.5-flash"
 )
 
-# Defaults
-MODEL=""
+# Defaults (can be overridden by environment variables)
+MODEL="${GEMINI_DEFAULT_MODEL:-}"
 TASK=""
-TIMEOUT=300
+TIMEOUT="${GEMINI_TIMEOUT:-900}"
 JSON_OUTPUT=false
 YOLO_MODE=false
+READ_STDIN=false
 FILES=()
 PROMPT=""
+STDIN_CONTENT=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -66,8 +74,12 @@ while [[ $# -gt 0 ]]; do
             YOLO_MODE=true
             shift
             ;;
+        --stdin)
+            READ_STDIN=true
+            shift
+            ;;
         -h|--help)
-            head -20 "$0" | tail -19
+            head -25 "$0" | tail -24
             exit 0
             ;;
         --)
@@ -113,6 +125,16 @@ if $YOLO_MODE; then
     CMD+=(--yolo)
 fi
 
+# Read from stdin if --stdin flag is set
+if $READ_STDIN; then
+    if [[ ! -t 0 ]]; then
+        STDIN_CONTENT="$(cat)"
+        echo "Read $(echo "$STDIN_CONTENT" | wc -c) bytes from stdin" >&2
+    else
+        echo "Warning: --stdin specified but no input piped" >&2
+    fi
+fi
+
 # Add files to prompt if specified
 if [[ ${#FILES[@]} -gt 0 ]]; then
     FILE_CONTENT=""
@@ -125,6 +147,11 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
         fi
     done
     PROMPT="$FILE_CONTENT$PROMPT"
+fi
+
+# Add stdin content to prompt
+if [[ -n "$STDIN_CONTENT" ]]; then
+    PROMPT="--- Input ---"$'\n'"$STDIN_CONTENT"$'\n\n'"$PROMPT"
 fi
 
 CMD+=("$PROMPT")
