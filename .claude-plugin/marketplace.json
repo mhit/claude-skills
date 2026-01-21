@@ -5,8 +5,8 @@
     "email": "mhit@fire-candy.com"
   },
   "metadata": {
-    "description": "Custom skills for Claude Code - Gemini integration and more",
-    "version": "1.0.0"
+    "description": "Custom skills for Claude Code - Gemini/KINTONE integration",
+    "version": "1.1.0"
   },
   "plugins": [
     {
@@ -16,6 +16,15 @@
       "strict": false,
       "skills": [
         "./gemini-skill"
+      ]
+    },
+    {
+      "name": "kintone-skill",
+      "description": "KINTONE REST API integration for Claude Code. CRUD operations, search with natural language query, schema caching, and file attachments.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./kintone-skill"
       ]
     }
   ]
