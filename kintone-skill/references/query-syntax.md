@@ -1,14 +1,25 @@
-# KINTONE 検索クエリ構文
+# KINTONE Query Syntax Reference
 
-KINTONE REST API のクエリ構文の詳細リファレンスです。
+Detailed reference for KINTONE REST API query syntax.
 
-## 基本構文
+## Table of Contents
+
+- [Basic Syntax](#basic-syntax)
+- [Operators](#operators)
+- [Built-in Functions](#built-in-functions)
+- [Sorting and Pagination](#sorting-and-pagination)
+- [Compound Conditions](#compound-conditions)
+- [Field Type Notes](#field-type-notes)
+- [Query Builder (Python)](#query-builder-python)
+- [Natural Language Conversion](#natural-language-conversion)
+
+## Basic Syntax
 
 ```
 フィールドコード 演算子 "値" [and|or 条件...] [order by ...] [limit N] [offset N]
 ```
 
-## 演算子一覧
+## Operators
 
 | 演算子 | 意味 | 例 |
 |--------|------|-----|
@@ -23,7 +34,7 @@ KINTONE REST API のクエリ構文の詳細リファレンスです。
 | `in` | リスト内に存在 | `ステータス in ("完了", "進行中")` |
 | `not in` | リスト内に存在しない | `ステータス not in ("却下")` |
 
-## 組み込み関数
+## Built-in Functions
 
 | 関数 | 説明 | 例 |
 |------|------|-----|
@@ -35,7 +46,7 @@ KINTONE REST API のクエリ構文の詳細リファレンスです。
 | `LAST_MONTH()` | 先月初日 | `作成日 >= LAST_MONTH()` |
 | `THIS_YEAR()` | 今年初日 | `作成日 >= THIS_YEAR()` |
 
-## ソート・ページネーション
+## Sorting and Pagination
 
 ```
 # ソート（複数可）
@@ -51,7 +62,7 @@ offset 50
 ステータス = "完了" order by 更新日時 desc limit 100 offset 0
 ```
 
-## 複合条件
+## Compound Conditions
 
 ```
 # AND 条件
@@ -64,7 +75,7 @@ offset 50
 (ステータス = "完了" or ステータス = "進行中") and 担当者 = LOGINUSER()
 ```
 
-## フィールド型別の注意点
+## Field Type Notes
 
 ### 日付・日時フィールド
 
@@ -109,7 +120,7 @@ offset 50
 ステータス in ("完了", "進行中", "未着手")
 ```
 
-## クエリビルダー（Python）
+## Query Builder (Python)
 
 スクリプト `kintone_search.py` にはクエリビルダーが含まれています：
 
@@ -128,7 +139,7 @@ print(q.build())
 # → ステータス = "進行中" and 担当者 = "田中" or 優先度 = "高" order by 期限 asc limit 50
 ```
 
-## 自然言語変換
+## Natural Language Conversion
 
 `parse_natural_query()` 関数で日本語からクエリに変換：
 

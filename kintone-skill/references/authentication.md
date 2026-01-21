@@ -1,8 +1,17 @@
-# KINTONE 認証方法
+# KINTONE Authentication Reference
 
-KINTONE REST API の認証方法についてのリファレンスです。
+Reference for KINTONE REST API authentication methods.
 
-## 認証方式
+## Table of Contents
+
+- [Authentication Methods](#authentication-methods)
+- [API Token Authentication (Recommended)](#api-token-authentication-recommended)
+- [Password Authentication](#password-authentication)
+- [Security Best Practices](#security-best-practices)
+- [Environment Variable Examples](#environment-variable-examples)
+- [Troubleshooting](#troubleshooting)
+
+## Authentication Methods
 
 KINTONE は以下の認証方式をサポートしています：
 
@@ -12,7 +21,7 @@ KINTONE は以下の認証方式をサポートしています：
 | パスワード認証 | `X-Cybozu-Authorization` | ★★☆ | 一時的なアクセス |
 | OAuth | Bearer トークン | ★★☆ | 外部アプリ連携 |
 
-## API トークン認証（推奨）
+## API Token Authentication (Recommended)
 
 ### トークン発行手順
 
@@ -56,7 +65,7 @@ headers = {
 X-Cybozu-API-Token: token1,token2,token3
 ```
 
-## パスワード認証
+## Password Authentication
 
 ユーザーのログイン名とパスワードを Base64 エンコードして使用。
 
@@ -73,7 +82,7 @@ headers = {
 
 **注意**: パスワード認証はセキュリティ上、本番環境では非推奨。
 
-## セキュリティベストプラクティス
+## Security Best Practices
 
 ### やるべきこと
 
@@ -89,7 +98,7 @@ headers = {
 - ❌ 全権限を持つトークンを作成
 - ❌ 複数人で同じトークンを共有
 
-## 環境変数の設定例
+## Environment Variable Examples
 
 ### Bash/Zsh
 
@@ -120,7 +129,7 @@ export KINTONE_API_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxx"
 }
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
 ### 401 Unauthorized
 

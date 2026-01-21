@@ -1,85 +1,68 @@
 ---
-name: kintone-skill
-description: "KINTONE REST API を操作するスキル。レコードの取得・追加・更新・削除、検索、スキーマ確認、添付ファイル操作が可能。ユーザーが「KINTONE」「kintone」「キントーン」について言及した場合、またはレコード操作・データベース操作を KINTONE で行いたい場合に使用します。トリガー: (1) KINTONE のレコードを取得/追加/更新/削除したい (2) KINTONE で検索したい (3) KINTONE のスキーマ/フィールド定義を確認したい (4) KINTONE の添付ファイルを操作したい"
+name: managing-kintone
+description: "Performs CRUD operations on KINTONE REST API. Retrieves, adds, updates, and deletes records. Supports natural language query conversion, schema caching, and file attachments. Use when users mention KINTONE, kintone, or want to: (1) Get/add/update/delete KINTONE records, (2) Search KINTONE data, (3) Check app schema/field definitions, (4) Upload/download attachments."
 ---
 
-# KINTONE Skill
+# Managing KINTONE
 
-KINTONE REST API を Claude から直接操作するスキルです。
+Operates KINTONE REST API directly from Claude Code.
 
-## 私（Claude）が使うべき場面
+## When to Use
 
-| 場面 | なぜこのスキル？ | 使うコマンド |
-|------|-----------------|-------------|
-| **「KINTONEのデータを見たい」** | 直接 API を叩ける | `/kintone get` `/kintone search` |
-| **「KINTONEに追加して」** | JSON 形式で投入 | `/kintone add` |
-| **「KINTONEを更新して」** | レコード ID 指定で更新 | `/kintone update` |
-| **「このファイルをKINTONEに添付」** | ファイルアップロード→レコード紐付け | `/kintone file` |
-| **「フィールド構成を確認」** | スキーマをキャッシュして即座に参照 | `/kintone schema` |
+| User Request | Command |
+|-------------|---------|
+| "Get KINTONE data" | `/kintone get` `/kintone search` |
+| "Add to KINTONE" | `/kintone add` |
+| "Update KINTONE record" | `/kintone update` |
+| "Attach file to KINTONE" | `/kintone file` |
+| "Show field definitions" | `/kintone schema` |
 
-## 事前設定
+## Prerequisites
 
-以下の環境変数が必要です：
+Required environment variables:
 
 ```bash
-# 必須
+# Required
 export KINTONE_DOMAIN="xxx.cybozu.com"
 export KINTONE_API_TOKEN="your-api-token"
 
-# オプション
-export KINTONE_DEFAULT_APP="123"           # デフォルトアプリID
+# Optional
+export KINTONE_DEFAULT_APP="123"
 export KINTONE_CACHE_DIR="~/.cache/kintone-skill"
-export KINTONE_CACHE_TTL="3600"            # キャッシュ有効期限（秒）
+export KINTONE_CACHE_TTL="3600"
 ```
 
-## コマンド一覧
+## Commands
 
-### /kintone schema - スキーマ確認
+### /kintone schema
 
-アプリのフィールド定義を表示します。結果はキャッシュされます。
+Displays app field definitions. Results are cached.
 
 ```bash
-# 基本
 scripts/kintone.sh schema 123
-
-# キャッシュを更新
-scripts/kintone.sh schema 123 --refresh
-
-# JSON 出力
-scripts/kintone.sh schema 123 --json
+scripts/kintone.sh schema 123 --refresh  # Force refresh
+scripts/kintone.sh schema 123 --json     # JSON output
 ```
 
-### /kintone get - レコード取得
+### /kintone get
 
 ```bash
-# 1件取得
-scripts/kintone.sh get 123 1
-
-# JSON 出力
+scripts/kintone.sh get 123 1        # Get record ID 1 from app 123
 scripts/kintone.sh get 123 1 --json
 ```
 
-### /kintone search - レコード検索
+### /kintone search
 
 ```bash
-# 全件取得（最大100件）
 scripts/kintone.sh search 123
-
-# クエリ指定
 scripts/kintone.sh search 123 'ステータス = "完了"'
-
-# 自然言語風クエリ
-scripts/kintone.sh query "ステータスが完了"
-# → ステータス = "完了" に変換される
-
-# ページネーション
 scripts/kintone.sh search 123 --limit 50 --offset 100
 ```
 
-**クエリ構文（自然言語変換サポート）**:
+**Natural language query conversion**:
 
-| 自然言語 | 変換後 |
-|---------|--------|
+| Input | Converted Query |
+|-------|----------------|
 | `名前が田中` | `名前 = "田中"` |
 | `ステータスが完了または進行中` | `ステータス in ("完了", "進行中")` |
 | `作成日が今日` | `作成日 = TODAY()` |
@@ -87,86 +70,82 @@ scripts/kintone.sh search 123 --limit 50 --offset 100
 | `メモが空でない` | `メモ != ""` |
 | `金額が10000以上` | `金額 >= "10000"` |
 
-### /kintone add - レコード追加
+Convert with: `scripts/kintone.sh query "名前が田中"`
+
+### /kintone add
 
 ```bash
-# JSON で追加
 scripts/kintone.sh add 123 '{"タイトル": "新規タスク", "担当者": "田中"}'
-
-# ファイルから追加
 scripts/kintone.sh add 123 --file record.json
 ```
 
-### /kintone update - レコード更新
+### /kintone update
 
 ```bash
 scripts/kintone.sh update 123 1 '{"ステータス": "完了"}'
 ```
 
-### /kintone delete - レコード削除
+### /kintone delete
 
 ```bash
-# カンマ区切りで複数指定可能
-scripts/kintone.sh delete 123 1,2,3
+scripts/kintone.sh delete 123 1,2,3  # Comma-separated IDs
 ```
 
-### /kintone file - 添付ファイル操作
+### /kintone file
 
 ```bash
-# アップロード
+# Upload
 scripts/kintone.sh file upload ./document.pdf
-# → fileKey が返される
+# Returns fileKey
 
-# ダウンロード
+# Download
 scripts/kintone.sh file download abc123def456 --output ./downloaded.pdf
 
-# レコードの添付ファイル一覧
+# List attachments
 scripts/kintone.sh file list --app 123 --record 1 --field 添付ファイル
 ```
 
-## スキーマキャッシュの仕組み
+## Schema Caching
 
-1. 初回アクセス時に API からスキーマ取得
-2. `~/.cache/kintone-skill/schemas/app_XXX.json` に保存
-3. 次回以降はキャッシュから読み込み（高速）
-4. `--refresh` でキャッシュ更新
-5. デフォルト有効期限: 1時間
+1. Fetches schema from API on first access
+2. Saves to `~/.cache/kintone-skill/schemas/app_XXX.json`
+3. Subsequent accesses use cache (fast)
+4. Use `--refresh` to update cache
+5. Default TTL: 1 hour
 
-**メリット**: 私（Claude）がフィールド名・型を即座に把握し、正しいクエリ・データ形式を提案できます。
+**Benefit**: Enables immediate field name/type lookup for accurate query generation.
 
-## Python API（直接利用）
-
-スクリプトを Python から直接インポートして使うこともできます：
+## Python API
 
 ```python
 from kintone_client import KintoneClient
 from kintone_schema import SchemaManager
 from kintone_search import query, parse_natural_query
 
-# クライアント
+# Client
 client = KintoneClient()
 response = client.get_record(app_id=123, record_id=1)
 
-# スキーマ管理
+# Schema
 schema_mgr = SchemaManager()
 schema = schema_mgr.get_schema(app_id=123)
 
-# クエリビルダー
+# Query builder
 q = query().equals("ステータス", "完了").order_by("更新日時", "desc").limit(10)
-print(q.build())  # ステータス = "完了" order by 更新日時 desc limit 10
+print(q.build())
 ```
 
-## エラーハンドリング
+## Error Handling
 
-| エラー | 原因 | 対処 |
-|--------|------|------|
-| `KINTONE_DOMAIN not found` | 環境変数未設定 | `export KINTONE_DOMAIN=...` |
-| `401 Unauthorized` | API トークン無効 | トークンを再発行 |
-| `403 Forbidden` | 権限不足 | アプリの API トークン権限を確認 |
-| `404 Not Found` | アプリ/レコードが存在しない | ID を確認 |
-| `400 Bad Request` | リクエスト形式エラー | フィールド名・型を確認 |
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `KINTONE_DOMAIN not found` | Env var not set | `export KINTONE_DOMAIN=...` |
+| `401 Unauthorized` | Invalid API token | Regenerate token |
+| `403 Forbidden` | Insufficient permissions | Check app token permissions |
+| `404 Not Found` | App/record doesn't exist | Verify ID |
+| `400 Bad Request` | Invalid request format | Check field names/types |
 
-## 参考リファレンス
+## References
 
-- [references/query-syntax.md](references/query-syntax.md) - 検索クエリ構文の詳細
-- [references/authentication.md](references/authentication.md) - 認証方法の詳細
+- [references/query-syntax.md](references/query-syntax.md) - Query syntax details
+- [references/authentication.md](references/authentication.md) - Authentication methods
