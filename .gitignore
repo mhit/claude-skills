@@ -11,3 +11,10 @@ node_modules/
 # Temporary
 *.tmp
 *.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude state
+.claude/

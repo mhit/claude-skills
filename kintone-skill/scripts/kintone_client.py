@@ -4,6 +4,7 @@
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 from typing import Any, Optional
 from dataclasses import dataclass
 
@@ -57,7 +58,7 @@ class KintoneClient:
         )
 
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:
                 response_data = json.loads(response.read().decode("utf-8"))
                 return KintoneResponse(success=True, data=response_data)
         except urllib.error.HTTPError as e:
@@ -182,7 +183,7 @@ class KintoneClient:
         headers = {"X-Cybozu-API-Token": self.config.api_token}
 
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             return response.read()
 
     def upload_file(self, file_path: str, file_name: str) -> KintoneResponse:
@@ -214,7 +215,7 @@ class KintoneClient:
         req = urllib.request.Request(url, data=body, headers=headers, method="POST")
 
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=60) as response:
                 response_data = json.loads(response.read().decode("utf-8"))
                 return KintoneResponse(success=True, data=response_data)
         except urllib.error.HTTPError as e:
