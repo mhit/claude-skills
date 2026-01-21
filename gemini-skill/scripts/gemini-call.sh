@@ -125,39 +125,37 @@ if $YOLO_MODE; then
     CMD+=(--yolo)
 fi
 
-# Read from stdin if --stdin flag is set
-if $READ_STDIN; then
-    if [[ ! -t 0 ]]; then
-        STDIN_CONTENT="$(cat)"
-        echo "Read $(echo "$STDIN_CONTENT" | wc -c) bytes from stdin" >&2
+# Check if stdin has content (for piping directly to gemini)
+HAS_STDIN=false
+if $READ_STDIN && [[ ! -t 0 ]]; then
+    HAS_STDIN=true
+    # Save stdin to temp file for size reporting and passing to gemini
+    STDIN_TEMP=$(mktemp)
+    cat > "$STDIN_TEMP"
+    STDIN_SIZE=$(wc -c < "$STDIN_TEMP")
+    echo "Read $STDIN_SIZE bytes from stdin" >&2
+    trap "rm -f '$STDIN_TEMP'" EXIT
+elif $READ_STDIN; then
+    echo "Warning: --stdin specified but no input piped" >&2
+fi
+
+# Add files using @ syntax (gemini native)
+for file in "${FILES[@]}"; do
+    if [[ -f "$file" ]]; then
+        PROMPT="@$file $PROMPT"
     else
-        echo "Warning: --stdin specified but no input piped" >&2
+        echo "Warning: File not found: $file" >&2
     fi
-fi
-
-# Add files to prompt if specified
-if [[ ${#FILES[@]} -gt 0 ]]; then
-    FILE_CONTENT=""
-    for file in "${FILES[@]}"; do
-        if [[ -f "$file" ]]; then
-            FILE_CONTENT+="--- File: $file ---"$'\n'
-            FILE_CONTENT+="$(cat "$file")"$'\n\n'
-        else
-            echo "Warning: File not found: $file" >&2
-        fi
-    done
-    PROMPT="$FILE_CONTENT$PROMPT"
-fi
-
-# Add stdin content to prompt
-if [[ -n "$STDIN_CONTENT" ]]; then
-    PROMPT="--- Input ---"$'\n'"$STDIN_CONTENT"$'\n\n'"$PROMPT"
-fi
+done
 
 CMD+=("$PROMPT")
 
 # Show selected model
 echo "Using model: $MODEL" >&2
 
-# Execute with timeout
-timeout "$TIMEOUT" "${CMD[@]}"
+# Execute with timeout - pipe stdin if available
+if $HAS_STDIN; then
+    timeout "$TIMEOUT" "${CMD[@]}" < "$STDIN_TEMP"
+else
+    timeout "$TIMEOUT" "${CMD[@]}"
+fi
