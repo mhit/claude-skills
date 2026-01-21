@@ -2,6 +2,16 @@
 
 Claude Code用のカスタムスキル集。
 
+## インストール（プラグインとして）
+
+```bash
+# マーケットプレイスとして登録
+claude plugin marketplace add mhit/claude-skills
+
+# スキルをインストール
+claude plugin install gemini-skill@claude-skills
+```
+
 ## スキル一覧
 
 | スキル | 説明 | 状態 |

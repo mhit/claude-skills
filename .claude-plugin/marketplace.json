@@ -1,0 +1,22 @@
+{
+  "name": "claude-skills",
+  "owner": {
+    "name": "mhit",
+    "email": "mhit@fire-candy.com"
+  },
+  "metadata": {
+    "description": "Custom skills for Claude Code - Gemini integration and more",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "gemini-skill",
+      "description": "Gemini CLI integration for Claude Code. Enables large file analysis (1M tokens), web search, OCR, UI/UX design, and code review as second opinion.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./gemini-skill"
+      ]
+    }
+  ]
+}
