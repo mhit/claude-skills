@@ -34,14 +34,26 @@ export KINTONE_CACHE_TTL="3600"
 
 ## Commands
 
+### /kintone apps
+
+Lists all accessible apps.
+
+```bash
+scripts/kintone.sh apps
+scripts/kintone.sh apps --name "顧客"           # Filter by name
+scripts/kintone.sh apps --app-ids 123,456       # Filter by IDs
+scripts/kintone.sh apps --limit 50 --offset 10  # Pagination
+scripts/kintone.sh apps --json
+```
+
 ### /kintone search --all
 
 Retrieves all records using Cursor API (no 500-record limit).
 
 ```bash
-scripts/kintone_crud.py search --app 123 --all
-scripts/kintone_crud.py search --app 123 --all --query 'Status = "Done"'
-scripts/kintone_crud.py search --app 123 --all --json
+scripts/kintone.sh search 123 --all
+scripts/kintone.sh search 123 'Status = "Done"' --all
+scripts/kintone.sh search 123 --all --json
 ```
 
 ### /kintone status
@@ -49,8 +61,8 @@ scripts/kintone_crud.py search --app 123 --all --json
 Updates record status (workflow).
 
 ```bash
-scripts/kintone_crud.py status --app 123 --id 1 --action "Approve"
-scripts/kintone_crud.py status --app 123 --id 1 --action "Approve" --assignee "tanaka"
+scripts/kintone.sh status 123 1 "Approve"
+scripts/kintone.sh status 123 1 "Approve" --assignee tanaka
 ```
 
 ### /kintone comment
@@ -59,13 +71,13 @@ Manages record comments.
 
 ```bash
 # Add comment
-scripts/kintone_crud.py comment --app 123 --id 1 --comment-action add --text "確認しました"
+scripts/kintone.sh comment 123 1 add "確認しました"
 
 # List comments
-scripts/kintone_crud.py comment --app 123 --id 1 --comment-action list
+scripts/kintone.sh comment 123 1 list
 
 # Delete comment
-scripts/kintone_crud.py comment --app 123 --id 1 --comment-action delete --comment-id 456
+scripts/kintone.sh comment 123 1 delete 456
 ```
 
 ### /kintone schema
@@ -76,6 +88,11 @@ Displays app field definitions. Results are cached.
 scripts/kintone.sh schema 123
 scripts/kintone.sh schema 123 --refresh  # Force refresh
 scripts/kintone.sh schema 123 --json     # JSON output
+
+# Cache management
+scripts/kintone.sh schema list           # List cached schemas
+scripts/kintone.sh schema clear          # Clear all cache
+scripts/kintone.sh schema clear 123      # Clear specific app cache
 ```
 
 ### /kintone get
@@ -109,14 +126,29 @@ Convert with: `scripts/kintone.sh query "名前が田中"`
 ### /kintone add
 
 ```bash
+# Single record
 scripts/kintone.sh add 123 '{"タイトル": "新規タスク", "担当者": "田中"}'
 scripts/kintone.sh add 123 --file record.json
+
+# Multiple records (auto-chunking: splits into 100-record batches)
+scripts/kintone.sh add 123 --file records.json  # JSON array of records
 ```
+
+**Auto Chunking**: When adding 100+ records, automatically splits into multiple API calls (100 records per batch).
 
 ### /kintone update
 
 ```bash
+# Single record
 scripts/kintone.sh update 123 1 '{"ステータス": "完了"}'
+```
+
+**Bulk update** (Python API only):
+
+```python
+# Multiple records with auto-chunking (100 records per batch)
+records = [{"id": i, "record": {"Status": {"value": "Done"}}} for i in range(1, 251)]
+results = crud.update_many(app_id=123, records=records)
 ```
 
 ### /kintone delete
@@ -135,8 +167,24 @@ scripts/kintone.sh file upload ./document.pdf
 # Download
 scripts/kintone.sh file download abc123def456 --output ./downloaded.pdf
 
-# List attachments
-scripts/kintone.sh file list --app 123 --record 1 --field 添付ファイル
+# List attachments in a record field
+scripts/kintone.sh file list 123 1 添付ファイル
+```
+
+**Download all files from record** (Python API):
+
+```python
+from kintone_file import KintoneFileManager
+
+manager = KintoneFileManager()
+
+# Get file info from record
+files = manager.get_file_info_from_record(app_id=123, record_id=1, field_code="添付ファイル")
+# Returns: [{"fileKey": "...", "name": "doc.pdf", "contentType": "...", "size": "1024"}, ...]
+
+# Download all files from record
+results = manager.download_from_record(app_id=123, record_id=1, field_code="添付ファイル")
+# Returns: [("file1.txt", True, "/path/to/file1.txt"), ("file2.pdf", True, "/path/to/file2.pdf")]
 ```
 
 ## Schema Caching
@@ -180,14 +228,40 @@ crud.add_comment(app_id=123, record_id=1, text="確認しました", mentions=["
 crud.get_comments(app_id=123, record_id=1)
 crud.delete_comment(app_id=123, record_id=1, comment_id=456)
 
+# Bulk Request (atomic multi-app operations, max 20 requests)
+client = KintoneClient()
+requests = [
+    {"method": "POST", "api": "/k/v1/record.json", "payload": {"app": 123, "record": {"Title": {"value": "A"}}}},
+    {"method": "POST", "api": "/k/v1/record.json", "payload": {"app": 456, "record": {"Name": {"value": "B"}}}},
+]
+result = client.bulk_request(requests)  # All succeed or all rollback
+
+# Apps list
+response = client.get_apps(ids=[123, 456], name="顧客", limit=50, offset=0)
+
 # Schema
 schema_mgr = SchemaManager()
 schema = schema_mgr.get_schema(app_id=123)
+cached = schema_mgr.list_cached_schemas()  # [(app_id, app_name, cached_at), ...]
+schema_mgr.clear_cache()                   # Clear all
+schema_mgr.clear_cache(app_id=123)         # Clear specific app
 
 # Query builder
 q = query().equals("ステータス", "完了").order_by("更新日時", "desc").limit(10)
 print(q.build())
 ```
+
+## API Limits
+
+| API | Limit | Handling |
+|-----|-------|----------|
+| Get records | 500 records/request | Use `--all` (Cursor API) |
+| Add records | 100 records/request | Auto-chunking |
+| Update records | 100 records/request | Auto-chunking |
+| Delete records | 100 records/request | Manual chunking |
+| Bulk request | 20 requests | Atomic rollback |
+| Cursor | 10 cursors/domain, 10min TTL | Auto-cleanup |
+| Comments | 10 comments/request | Pagination |
 
 ## Error Handling
 

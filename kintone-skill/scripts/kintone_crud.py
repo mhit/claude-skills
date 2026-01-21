@@ -327,10 +327,10 @@ def main():
     parser = argparse.ArgumentParser(description="KINTONE CRUD Operations")
     parser.add_argument(
         "command",
-        choices=["get", "search", "add", "update", "delete", "status", "comment"],
+        choices=["get", "search", "add", "update", "delete", "status", "comment", "apps"],
         help="CRUD command",
     )
-    parser.add_argument("--app", "-a", type=int, required=True, help="App ID")
+    parser.add_argument("--app", "-a", type=int, help="App ID")
     parser.add_argument("--id", "-i", type=int, help="Record ID (for get/update/status/comment)")
     parser.add_argument("--ids", type=str, help="Record IDs comma-separated (for delete)")
     parser.add_argument("--query", "-q", type=str, default="", help="Search query")
@@ -347,6 +347,9 @@ def main():
     parser.add_argument("--comment-action", type=str, choices=["add", "list", "delete"], help="Comment action")
     parser.add_argument("--text", "-t", type=str, help="Comment text")
     parser.add_argument("--comment-id", type=int, help="Comment ID (for delete)")
+    # Apps options
+    parser.add_argument("--name", type=str, help="App name filter (for apps)")
+    parser.add_argument("--app-ids", type=str, help="App IDs comma-separated (for apps)")
 
     args = parser.parse_args()
 
@@ -362,7 +365,19 @@ def main():
 
     response: KintoneResponse
 
-    if args.command == "get":
+    # Validate app_id for commands that require it
+    if args.command != "apps" and not args.app:
+        print(f"Error: --app is required for '{args.command}' command")
+        sys.exit(1)
+
+    if args.command == "apps":
+        app_ids = None
+        if args.app_ids:
+            app_ids = [int(x.strip()) for x in args.app_ids.split(",")]
+        response = crud.client.get_apps(ids=app_ids, name=args.name, limit=args.limit, offset=args.offset)
+        print_response(response, args.json)
+
+    elif args.command == "get":
         if not args.id:
             print("Error: --id is required for 'get' command")
             sys.exit(1)
