@@ -43,12 +43,12 @@ class KintoneClient:
 
         headers = {
             "X-Cybozu-API-Token": self.config.api_token,
-            "Content-Type": "application/json",
         }
 
         request_data = None
         if data and method != "GET":
             request_data = json.dumps(data).encode("utf-8")
+            headers["Content-Type"] = "application/json"
 
         req = urllib.request.Request(
             url,
