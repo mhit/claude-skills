@@ -175,6 +175,207 @@ class KintoneClient:
         """フォームのフィールド定義を取得"""
         return self._make_request("GET", "app/form/fields.json", params={"app": app_id})
 
+    # === カーソル操作 ===
+
+    def create_cursor(
+        self,
+        app_id: int,
+        query: str = "",
+        fields: Optional[list[str]] = None,
+        size: int = 500,
+    ) -> KintoneResponse:
+        """カーソルを作成（大量レコード取得用）
+
+        Args:
+            app_id: アプリ ID
+            query: 検索条件（limit/offset は使用不可）
+            fields: 取得フィールド（省略時は全フィールド）
+            size: 1回の取得件数（1-500、デフォルト500）
+
+        Returns:
+            KintoneResponse with data: {"id": "cursor_id", "totalCount": "count"}
+        """
+        data: dict[str, Any] = {"app": app_id, "size": min(max(size, 1), 500)}
+        if query:
+            data["query"] = query
+        if fields:
+            data["fields"] = fields
+
+        return self._make_request("POST", "records/cursor.json", data=data)
+
+    def get_cursor_records(self, cursor_id: str) -> KintoneResponse:
+        """カーソルからレコードを取得
+
+        Args:
+            cursor_id: カーソル ID
+
+        Returns:
+            KintoneResponse with data: {"records": [...], "next": true/false}
+        """
+        return self._make_request(
+            "GET",
+            "records/cursor.json",
+            params={"id": cursor_id},
+        )
+
+    def delete_cursor(self, cursor_id: str) -> KintoneResponse:
+        """カーソルを削除
+
+        Args:
+            cursor_id: カーソル ID
+
+        Returns:
+            KintoneResponse with data: {}
+        """
+        return self._make_request(
+            "DELETE",
+            "records/cursor.json",
+            data={"id": cursor_id},
+        )
+
+    # === ステータス操作 ===
+
+    def update_status(
+        self,
+        app_id: int,
+        record_id: int,
+        action: str,
+        assignee: Optional[str] = None,
+        revision: Optional[int] = None,
+    ) -> KintoneResponse:
+        """レコードのステータスを更新（ワークフロー）
+
+        Args:
+            app_id: アプリ ID
+            record_id: レコード ID
+            action: アクション名
+            assignee: 次の作業者（ログイン名）
+            revision: リビジョン番号
+
+        Returns:
+            KintoneResponse with data: {"revision": "new_revision"}
+        """
+        data: dict[str, Any] = {
+            "app": app_id,
+            "id": record_id,
+            "action": action,
+        }
+        if assignee:
+            data["assignee"] = assignee
+        if revision is not None:
+            data["revision"] = revision
+
+        return self._make_request("PUT", "record/status.json", data=data)
+
+    # === コメント操作 ===
+
+    def add_comment(
+        self,
+        app_id: int,
+        record_id: int,
+        text: str,
+        mentions: Optional[list[dict]] = None,
+    ) -> KintoneResponse:
+        """レコードにコメントを追加
+
+        Args:
+            app_id: アプリ ID
+            record_id: レコード ID
+            text: コメント本文（最大 65,535 文字）
+            mentions: メンション情報 [{"code": "user", "type": "USER"}]
+
+        Returns:
+            KintoneResponse with data: {"id": "comment_id"}
+        """
+        comment: dict[str, Any] = {"text": text}
+        if mentions:
+            comment["mentions"] = mentions
+
+        return self._make_request(
+            "POST",
+            "record/comment.json",
+            data={"app": app_id, "record": record_id, "comment": comment},
+        )
+
+    def get_comments(
+        self,
+        app_id: int,
+        record_id: int,
+        order: str = "desc",
+        offset: int = 0,
+        limit: int = 10,
+    ) -> KintoneResponse:
+        """レコードのコメントを取得
+
+        Args:
+            app_id: アプリ ID
+            record_id: レコード ID
+            order: 並び順（"asc" or "desc"）
+            offset: オフセット
+            limit: 取得件数（最大 10）
+
+        Returns:
+            KintoneResponse with data: {"comments": [...], "older": bool, "newer": bool}
+        """
+        return self._make_request(
+            "GET",
+            "record/comments.json",
+            params={
+                "app": app_id,
+                "record": record_id,
+                "order": order,
+                "offset": offset,
+                "limit": min(limit, 10),
+            },
+        )
+
+    def delete_comment(
+        self,
+        app_id: int,
+        record_id: int,
+        comment_id: int,
+    ) -> KintoneResponse:
+        """コメントを削除
+
+        Args:
+            app_id: アプリ ID
+            record_id: レコード ID
+            comment_id: コメント ID
+
+        Returns:
+            KintoneResponse with data: {}
+        """
+        return self._make_request(
+            "DELETE",
+            "record/comment.json",
+            data={"app": app_id, "record": record_id, "comment": comment_id},
+        )
+
+    # === Bulk Request ===
+
+    def bulk_request(self, requests: list[dict]) -> KintoneResponse:
+        """複数のリクエストを一括実行（アトミック）
+
+        Args:
+            requests: リクエスト配列（最大 20 件）
+                [{"method": "POST", "api": "/k/v1/record.json", "payload": {...}}]
+
+        Returns:
+            KintoneResponse with data: {"results": [...]}
+        """
+        if len(requests) > 20:
+            return KintoneResponse(
+                success=False,
+                error="Bulk request limit is 20",
+                error_code="LIMIT_EXCEEDED",
+            )
+
+        return self._make_request(
+            "POST",
+            "bulkRequest.json",
+            data={"requests": requests},
+        )
+
     # === ファイル操作 ===
 
     def download_file(self, file_key: str) -> bytes:

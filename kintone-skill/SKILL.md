@@ -34,6 +34,40 @@ export KINTONE_CACHE_TTL="3600"
 
 ## Commands
 
+### /kintone search --all
+
+Retrieves all records using Cursor API (no 500-record limit).
+
+```bash
+scripts/kintone_crud.py search --app 123 --all
+scripts/kintone_crud.py search --app 123 --all --query 'Status = "Done"'
+scripts/kintone_crud.py search --app 123 --all --json
+```
+
+### /kintone status
+
+Updates record status (workflow).
+
+```bash
+scripts/kintone_crud.py status --app 123 --id 1 --action "Approve"
+scripts/kintone_crud.py status --app 123 --id 1 --action "Approve" --assignee "tanaka"
+```
+
+### /kintone comment
+
+Manages record comments.
+
+```bash
+# Add comment
+scripts/kintone_crud.py comment --app 123 --id 1 --comment-action add --text "確認しました"
+
+# List comments
+scripts/kintone_crud.py comment --app 123 --id 1 --comment-action list
+
+# Delete comment
+scripts/kintone_crud.py comment --app 123 --id 1 --comment-action delete --comment-id 456
+```
+
 ### /kintone schema
 
 Displays app field definitions. Results are cached.
@@ -119,12 +153,32 @@ scripts/kintone.sh file list --app 123 --record 1 --field 添付ファイル
 
 ```python
 from kintone_client import KintoneClient
+from kintone_crud import KintoneCRUD
 from kintone_schema import SchemaManager
 from kintone_search import query, parse_natural_query
 
 # Client
 client = KintoneClient()
 response = client.get_record(app_id=123, record_id=1)
+
+# CRUD operations
+crud = KintoneCRUD()
+
+# Search all records (no 500-record limit)
+for record in crud.search_all(app_id=123, query='Status = "Done"'):
+    print(record)
+
+# Bulk add with auto-chunking (handles 100+ records)
+records = [{"Title": f"Item {i}"} for i in range(250)]
+results = crud.add_many(app_id=123, records=records)  # Auto-splits into 3 chunks
+
+# Status update (workflow)
+crud.change_status(app_id=123, record_id=1, action="Approve", assignee="tanaka")
+
+# Comment operations
+crud.add_comment(app_id=123, record_id=1, text="確認しました", mentions=["tanaka"])
+crud.get_comments(app_id=123, record_id=1)
+crud.delete_comment(app_id=123, record_id=1, comment_id=456)
 
 # Schema
 schema_mgr = SchemaManager()
