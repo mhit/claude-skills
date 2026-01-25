@@ -13,22 +13,37 @@ claude plugin marketplace add mhit/claude-skills
 # スキルをインストール
 claude plugin install gemini-skill@claude-skills
 claude plugin install kintone-skill@claude-skills
+claude plugin install meeting-minutes-analyzer@claude-skills
+claude plugin install spi3-analyzer@claude-skills
+claude plugin install fortune-telling-master@claude-skills
+claude plugin install syakaihoken-roumushi@claude-skills
 ```
 
 ### 方法2: 手動インストール
 
 ```bash
 # .skillファイルをダウンロードしてスキルディレクトリにコピー
-cp gemini-skill.skill ~/.claude/skills/
-cp kintone-skill.skill ~/.claude/skills/
+cp *.skill ~/.claude/skills/
 
 # 解凍
 cd ~/.claude/skills
-python3 -c "import zipfile; zipfile.ZipFile('gemini-skill.skill', 'r').extractall('.')"
-python3 -c "import zipfile; zipfile.ZipFile('kintone-skill.skill', 'r').extractall('.')"
+for f in *.skill; do
+  python3 -c "import zipfile; zipfile.ZipFile('$f', 'r').extractall('.')"
+done
 ```
 
 ## スキル一覧
+
+| スキル | 説明 |
+|--------|------|
+| [gemini-skill](#gemini-skill) | Gemini CLI連携（大規模ファイル分析、検索、OCR） |
+| [kintone-skill](#kintone-skill) | KINTONE REST API連携（CRUD、検索、添付ファイル） |
+| [meeting-minutes-analyzer](#meeting-minutes-analyzer) | 会議音声から高度な議事録を作成 |
+| [spi3-analyzer](#spi3-analyzer) | SPI3-G採用適性検査の分析レポート作成 |
+| [fortune-telling-master](#fortune-telling-master) | 四柱推命・姓名判断の専門鑑定 |
+| [syakaihoken-roumushi](#syakaihoken-roumushi) | 就業規則・労働規程の作成支援 |
+
+---
 
 ### gemini-skill
 
@@ -49,42 +64,6 @@ export GEMINI_TIMEOUT="900"                    # オプション（秒）
 | `/gemini-review` | コードレビュー（セカンドオピニオン） | gemini-2.5-pro |
 | `/gemini-design` | UI/UX設計 | gemini-3-flash-preview |
 
-**パイプ（stdin）対応**:
-
-大量データをパイプで渡して処理可能:
-
-```bash
-# ログ分析
-cat production.log | gemini-call.sh --stdin --task analyze "エラーを特定して"
-
-# git diff レビュー
-git diff | gemini-call.sh --stdin --task review "この変更をレビューして"
-
-# 複数ファイル結合
-cat src/*.ts | gemini-call.sh --stdin "このコードの問題点は？"
-```
-
-**gemini-call.sh オプション**:
-
-| オプション | 説明 |
-|-----------|------|
-| `-m, --model MODEL` | モデル指定 |
-| `--task TASK` | タスクタイプ（ocr/design/review/analyze/quick） |
-| `-f, --file FILE` | ファイルを含める（複数可） |
-| `--stdin` | 標準入力から読み込み |
-| `-t, --timeout SECS` | タイムアウト秒（デフォルト: 900） |
-| `-j, --json` | JSON出力 |
-| `-y, --yolo` | 自動承認 |
-
-**CLAUDE.mdテンプレート**: `gemini-skill/templates/CLAUDE.gemini.md` をプロジェクトにコピーしてカスタマイズ可能。
-
-**Claudeが自発的に使う場面**:
-- 大きなファイル（100KB+）→ Geminiに任せる
-- 「最新の」「現在の」→ Geminiに検索させる
-- 画像/PDF → Geminiに読ませる
-- UI設計 → Geminiに相談
-- 重要な変更 → Geminiにレビューさせる
-
 ---
 
 ### kintone-skill
@@ -93,71 +72,98 @@ KINTONE REST API連携スキル。レコードのCRUD、検索、スキーマキ
 
 **環境変数**:
 ```bash
-# 必須
 export KINTONE_DOMAIN="xxx.cybozu.com"
 export KINTONE_API_TOKEN="your-api-token"
-
-# オプション
-export KINTONE_DEFAULT_APP="123"
-export KINTONE_CACHE_DIR="~/.cache/kintone-skill"
-export KINTONE_CACHE_TTL="3600"
 ```
-
-**基本コマンド**:
 
 | 機能 | 説明 |
 |------|------|
 | `/kintone apps` | アクセス可能なアプリ一覧 |
-| `/kintone schema` | フィールド定義を表示（キャッシュ対応） |
-| `/kintone get` | レコードを1件取得 |
-| `/kintone search` | レコードを検索（自然言語クエリ対応） |
-| `/kintone search --all` | 全件取得（Cursor API、500件制限なし） |
-| `/kintone add` | レコードを追加（100件以上は自動分割） |
-| `/kintone update` | レコードを更新 |
-| `/kintone delete` | レコードを削除 |
-| `/kintone file` | 添付ファイルのアップロード/ダウンロード |
-| `/kintone status` | ステータス更新（ワークフロー） |
-| `/kintone comment` | コメント追加/一覧/削除 |
+| `/kintone schema` | フィールド定義を表示 |
+| `/kintone search` | レコードを検索（自然言語対応） |
+| `/kintone add/update/delete` | レコード操作 |
+| `/kintone file` | 添付ファイル操作 |
 
-**拡張機能**:
+---
 
+### meeting-minutes-analyzer
+
+音声トランスクリプトから高度な会議議事録を作成するスキル。
+
+**特徴**:
+- タイムスタンプあり/なし、話者名あり/なしの複数形式に対応
+- SWOT分析、意思決定ツリー、感情分析など8種類のフレームワーク
+- 固有名詞の確認プロセス
+- Word(.docx)形式で出力
+
+**対応会議タイプ**:
+- プロジェクト会議
+- 戦略会議
+- ブレインストーミング
+- クライアント打ち合わせ
+- 採用面接
+
+---
+
+### spi3-analyzer
+
+SPI3-G（総合検査）の採用適性検査結果を分析し、包括的なレポートを作成。
+
+**分析内容**:
+- 能力検査（言語・非言語能力）
+- 性格検査14項目
+- 組織適応性（4つの風土タイプ）
+- 「素直さ」の多角的評価
+- ゼークトの組織論による分類
+- 面接での確認事項（STAR法）
+
+**出力**:
+- 12セクションの詳細レポート
+- 採用推奨度（5段階）
+- 面接質問リスト
+
+---
+
+### fortune-telling-master
+
+プロフェッショナルレベルの東洋占術システム。四柱推命と姓名判断を統合。
+
+**機能**:
+- 四柱（年・月・日・時）の自動計算
+- 通変星・十二運の算出
+- 100年運勢表の自動生成
+- 相性判定（三合・六合・相冲など）
+- 特殊星（吉神・凶神）の判定
+
+**スクリプト**:
 ```bash
-# アプリ一覧（名前でフィルタ）
-scripts/kintone.sh apps --name "顧客"
+# 統合スクリプト
+python3 fortune_teller.py -d 1982-02-25 -t 12:00 -g male
 
-# 全件取得（Cursor API）
-scripts/kintone.sh search 123 --all
-
-# ワークフローステータス更新
-scripts/kintone.sh status 123 1 "承認"
-
-# コメント追加
-scripts/kintone.sh comment 123 1 add "確認しました"
+# 相性判定付き
+python3 fortune_teller.py -d 1982-02-25 -t 12:00 -g male \
+  --partner-date 1985-07-15 --partner-time 08:30 --partner-gender female
 ```
 
-**Auto-chunking**: 100件以上のレコード追加/更新時、自動的に100件ごとに分割してAPIコール。
+---
 
-**自然言語クエリ変換**:
-| 入力 | 変換結果 |
-|------|---------|
-| `名前が田中` | `名前 = "田中"` |
-| `ステータスが完了または進行中` | `ステータス in ("完了", "進行中")` |
-| `作成日が今日` | `作成日 = TODAY()` |
-| `担当者が自分` | `担当者 = LOGINUSER()` |
-| `金額が10000以上` | `金額 >= "10000"` |
+### syakaihoken-roumushi
 
-**API制限と対応**:
+中小企業向けの就業規則・各種規程の作成支援スキル。
 
-| API | 制限 | 対応 |
-|-----|------|------|
-| Get records | 500件/回 | `--all`（Cursor API） |
-| Add/Update | 100件/回 | Auto-chunking |
-| Bulk request | 20リクエスト | アトミック処理 |
+**対応規程**:
+- 就業規則（本則）
+- 賃金規程
+- 育児・介護休業規程
+- パートタイマー就業規則
+- テレワーク規程
 
-**スキーマキャッシュ**:
-- 初回アクセス時にアプリのフィールド定義を取得
-- `~/.cache/kintone-skill/schemas/` にキャッシュ
-- Claudeがフィールド名・型を即座に把握し、正確なクエリを生成可能
+**特徴**:
+- 労働基準法などの法令に基づく
+- 対話形式で企業の実態に合わせた規程作成
+- 最新の法改正（2024年4月、2025年4月）に対応
+- GMOサインでの電子契約締結サポート
+- Word/Googleドキュメント形式で出力
 
 ---
 
